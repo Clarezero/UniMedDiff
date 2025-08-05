@@ -7,8 +7,8 @@ UniMedDiff is a diffusion-based framework that generates high-fidelity medical i
 We recommend using conda to manage your environment:
 
 ```bash
-conda create -n diff_cxr python=3.12
-conda activate diff_cxr
+conda create -n UniMedDiff python=3.12
+conda activate UniMedDiff
 
 # Install PyTorch with CUDA 11.8
 pip3 install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu118
@@ -46,7 +46,7 @@ Generate synthetic chest X-ray images from clinical reports and disease class la
 python image_generation.py \
   --config configs/MIMIC_256_squeeze77_control.py \
   --nnet_path weights/MIMIC_256_squeeze77_cls/200000.ckpt/nnet_ema.pth \
-  --output_path gen_img/diff_CXR \
+  --output_path gen_img/UniMedDiff \
   --input_path assets/inputs/test_report.txt \
   --input_cls_path assets/inputs/test_cls.txt \
   --config.nnet.depth=16
@@ -57,5 +57,6 @@ Trained model weights can be downloaded from Baidu Cloud:
 
 - **Link:** https://pan.baidu.com/s/1rMjFHKBfgE47dWLSrD24hA  
 - **Access Code:** `asdf`
+
 
 
