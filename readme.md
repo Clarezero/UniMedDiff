@@ -1,5 +1,5 @@
-# Diff-CXR
-Diff-CXR is a diffusion-based framework that generates high-fidelity chest X-rays from radiology reports. It combines disease knowledge with report content to guide the generation process, producing anatomically accurate and pathologically diverse images across 11 common lung diseases. By leveraging noise-filtered data and efficient text encoding, Diff-CXR offers a clinically meaningful solution for text-to-image synthesis in medical imaging.
+# UniMedDiff
+UniMedDiff is a diffusion-based framework that generates high-fidelity medical images from reports. It combines disease knowledge with report content to guide the generation process, producing anatomically accurate and pathologically diverse images across 11 common lung diseases. By leveraging noise-filtered data and efficient text encoding, UniMedDiff offers a clinically meaningful solution for text-to-image synthesis in medical imaging.
 
 ---
 
@@ -57,4 +57,5 @@ Trained model weights can be downloaded from Baidu Cloud:
 
 - **Link:** https://pan.baidu.com/s/1rMjFHKBfgE47dWLSrD24hA  
 - **Access Code:** `asdf`
+
 
