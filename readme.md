@@ -1,5 +1,5 @@
 # UniMedDiff
-UniMedDiff is a diffusion-based framework that generates high-fidelity medical images from reports. It combines disease knowledge with report content to guide the generation process, producing anatomically accurate and pathologically diverse images across 11 common lung diseases. By leveraging noise-filtered data and efficient text encoding, UniMedDiff offers a clinically meaningful solution for text-to-image synthesis in medical imaging.
+UniMedDiff is a universal framework for synthesizing anatomically accurate and pathologically diverse medical images from clinical reports. Trained on noise-filtered image–text pairs, UniMedDiff extracts and aligns concise text embeddings with visual features from lengthy reports, enabling pathology-aware guidance for medical image generation. It facilitates controllable generation by integrating reports and prior disease knowledge into the diffusion process, demonstrating versatility across datasets, tasks, and modalities. By bridging clinical reports and visual biomarkers, UniMedDiff pioneers reliable medical image synthesis for advanced diagnostics and research.
 
 ---
 
@@ -57,6 +57,7 @@ Trained model weights can be downloaded from Baidu Cloud:
 
 - **Link:** https://pan.baidu.com/s/1rMjFHKBfgE47dWLSrD24hA  
 - **Access Code:** `asdf`
+
 
 
 
