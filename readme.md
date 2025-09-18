@@ -3,20 +3,6 @@ UniMedDiff is a universal framework for synthesizing anatomically accurate and p
 
 ---
 
-### Environment Setup
-We recommend using conda to manage your environment:
-
-```bash
-conda create -n UniMedDiff python=3.12
-conda activate UniMedDiff
-
-# Install PyTorch with CUDA 11.8
-pip3 install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu118
-
-# Install required libraries
-pip install -e ./repos/open_clip -e ./repos/timm
-pip install einops requests tqdm pyyaml packaging regex opencv-python tensorboard ml-collections accelerate wandb spicy ftfy
-```
 
 ### Data Preparation
 
@@ -57,6 +43,7 @@ Trained model weights can be downloaded from Baidu Cloud:
 
 - **Link:** https://pan.baidu.com/s/1rMjFHKBfgE47dWLSrD24hA  
 - **Access Code:** `asdf`
+
 
 
 
