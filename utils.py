@@ -8,6 +8,7 @@ from absl import logging
 
 
 def set_logger(log_level='info', fname=None):
+    """Set up logging with optional file output."""
     import logging as _logging
     handler = logging.get_absl_handler()
     formatter = _logging.Formatter('%(asctime)s - %(filename)s - %(message)s')
@@ -20,6 +21,7 @@ def set_logger(log_level='info', fname=None):
 
 
 def dct2str(dct):
+    """Convert dictionary to string with 6-digit float formatting."""
     return str({k: f'{v:.6g}' for k, v in dct.items()})
 
 
@@ -64,6 +66,7 @@ def get_optimizer(params, name, **kwargs):
 
 
 def customized_lr_scheduler(optimizer, warmup_steps=-1):
+    """Simple lambda LR scheduler with optional warmup."""
     from torch.optim.lr_scheduler import LambdaLR
     def fn(step):
         if warmup_steps > 0:
@@ -74,6 +77,7 @@ def customized_lr_scheduler(optimizer, warmup_steps=-1):
 
 
 def get_lr_scheduler(optimizer, name, **kwargs):
+    """Return learning rate scheduler based on name."""
     if name == 'customized':
         return customized_lr_scheduler(optimizer, **kwargs)
     elif name == 'cosine':
@@ -84,6 +88,7 @@ def get_lr_scheduler(optimizer, name, **kwargs):
 
 
 def ema(model_dest: nn.Module, model_src: nn.Module, rate):
+    """Update model_dest parameters as EMA of model_src."""
     param_dict_src = dict(model_src.named_parameters())
     for p_name, p_dest in model_dest.named_parameters():
         p_src = param_dict_src[p_name]
@@ -92,6 +97,7 @@ def ema(model_dest: nn.Module, model_src: nn.Module, rate):
 
 
 class TrainState(object):
+    """Encapsulate training state: models, optimizer, scheduler, step."""
     def __init__(self, optimizer, lr_scheduler, step, nnet=None, nnet_ema=None):
         self.optimizer = optimizer
         self.lr_scheduler = lr_scheduler
@@ -137,10 +143,12 @@ class TrainState(object):
 
 
 def cnt_params(model):
+    """Count total number of parameters in a model."""
     return sum(param.numel() for param in model.parameters())
 
 
 def initialize_train_state(config, device):
+    """Initialize training state with model, EMA, optimizer, scheduler."""
     params = []
 
     nnet = get_nnet(**config.nnet)
@@ -160,6 +168,7 @@ def initialize_train_state(config, device):
 
 
 def initialize_train_state_pretrain_dist(config, device):
+    """Initialize training state from pretrained weights."""
     params = []
 
     nnet = get_nnet(**config.nnet)
@@ -171,7 +180,6 @@ def initialize_train_state_pretrain_dist(config, device):
     nnet.load_state_dict(weight)
     nnet_ema.load_state_dict(weight)
     logging.info(f'successfully loading pretrained weights from {config.nnet_path}')
-    # nnet.load_state_dict(torch.load(config.))
     logging.info(f'nnet has {cnt_params(nnet)} parameters')
 
     optimizer = get_optimizer(params, **config.optimizer)
@@ -185,12 +193,14 @@ def initialize_train_state_pretrain_dist(config, device):
 
 
 def amortize(n_samples, batch_size):
+    """Split n_samples into batches of batch_size, handling remainder."""
     k = n_samples // batch_size
     r = n_samples % batch_size
     return k * [batch_size] if r == 0 else k * [batch_size] + [r]
 
 
 def sample2dir(accelerator, path, n_samples, mini_batch_size, sample_fn, unpreprocess_fn=None):
+    """Sample images in mini-batches and save them to a directory (single-node)."""
     os.makedirs(path, exist_ok=True)
     idx = 0
     batch_size = mini_batch_size * accelerator.num_processes
@@ -205,6 +215,7 @@ def sample2dir(accelerator, path, n_samples, mini_batch_size, sample_fn, unprepr
 
 
 def sample2dir_dist(RANK, path, n_samples, mini_batch_size, sample_fn, unpreprocess_fn=None):
+    """Sample images and save them in a distributed setup."""
     os.makedirs(path, exist_ok=True)
     idx = 0
     batch_size = mini_batch_size * torch.cuda.device_count()
@@ -222,6 +233,7 @@ def sample2dir_dist(RANK, path, n_samples, mini_batch_size, sample_fn, unpreproc
     
 
 def grad_norm(model):
+    """Compute L2 norm of all gradients in the model."""
     total_norm = 0.
     for p in model.parameters():
         param_norm = p.grad.data.norm(2)
