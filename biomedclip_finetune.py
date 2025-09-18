@@ -37,6 +37,9 @@ tokenizer = open_clip.get_tokenizer('hf-hub:microsoft/BiomedCLIP-PubMedBERT_256-
 
 
 class XrayDataset(data.Dataset):
+    """
+    Custom dataset for loading X-ray images and corresponding text captions.
+    """
     def __init__(
         self, infos, transform, mode):
         self.transform = transform
