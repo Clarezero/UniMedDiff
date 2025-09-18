@@ -19,6 +19,10 @@ from bio_con_model import MyCLIPEncoder_squeeze77
 
 
 def stable_diffusion_beta_schedule(linear_start=0.00085, linear_end=0.0120, n_timestep=1000):
+    '''
+    Create beta schedule for Stable Diffusion (discrete timesteps).
+    Returns a numpy array of betas of length n_timestep.
+    '''
     _betas = (
         torch.linspace(linear_start ** 0.5, linear_end ** 0.5, n_timestep, dtype=torch.float64) ** 2
     )
@@ -26,6 +30,10 @@ def stable_diffusion_beta_schedule(linear_start=0.00085, linear_end=0.0120, n_ti
 
 
 def evaluate(config):
+    '''
+    Evaluation function for generating images from text prompts.
+    '''
+    
     if config.get('benchmark', False):
         torch.backends.cudnn.benchmark = True
         torch.backends.cudnn.deterministic = False
@@ -33,10 +41,8 @@ def evaluate(config):
     mp.set_start_method('spawn')
     accelerator = accelerate.Accelerator()
     device = accelerator.device
-    # accelerate.utils.set_seed(config.seed, device_specific=True)
     logging.info(f'Process {accelerator.process_index} using device: {device}')
 
-    # config.mixed_precision = accelerator.mixed_precision
     config.mixed_precision = True
     config = ml_collections.FrozenConfigDict(config)
     if accelerator.is_main_process:
@@ -45,6 +51,7 @@ def evaluate(config):
         utils.set_logger(log_level='error')
         builtins.print = lambda *args: None
 
+    
     dataset = get_dataset(**config.dataset)
 
     with open(config.input_path, 'r') as f:
@@ -61,15 +68,6 @@ def evaluate(config):
     class_noun = ['There is atelectasis.', 'There is cardiomegaly.', 'There is consolidation.', 'There is edema.', 
                   'There is enlarged cardiomediastinum.', 'There is fracture.', 'There is lung lesion.', 'There is lung opacity.', 
                   'There is pleural effusion.', 'There is pneumonia.', 'There is pneumothorax.']
-    # t=0
-    # for info in infos:
-    #     index = 0
-    #     class_prior = None
-    #     for step, class_type in enumerate(info):
-    #         if step==8:
-    #             if class_type == '1':
-    #                 t+=1
-    # print(t)
 
     for info in infos:
         index = 0
@@ -77,40 +75,23 @@ def evaluate(config):
         for step, class_type in enumerate(info):
             if step == 8 or step == 10 or step ==  13:
                 continue
-            
-                if class_prior is None:
-                    class_prior = class_noun[index]
-                else:
-                    class_prior = class_prior + ' ' + class_noun[index]
             index = index + 1            
         if class_prior is None:
             class_prior = 'There is no finding.'
         class_prompts.append(class_prior)
-    # clip = libs.clip.FrozenCLIPEmbedder()
-    # clip.eval()
-    # clip.to(device)
+ 
 
-    # contexts = clip.encode(prompts)
-
-    ### clip text encoding
     backbone, preprocess_train, preprocess_val = open_clip.create_model_and_transforms('hf-hub:microsoft/BiomedCLIP-PubMedBERT_256-vit_base_patch16_224')
     tokenizer = open_clip.get_tokenizer('hf-hub:microsoft/BiomedCLIP-PubMedBERT_256-vit_base_patch16_224')
     clip = MyCLIPEncoder_squeeze77(backbone)
     clip.eval()
-    # path = '/storage/ScientificPrograms/Diffusion/code/BioMedClip_finetune/FinalData/Contrastive_Pretrain_v1/temp007/Sep04_08-12-31/15-2.1513-1.9602.pth'
     path = 'weights/Contrastive_Pretrain_v1_CL_77_seed3407/15-2.2943-2.0637.pth'
     clip.load_state_dict(torch.load(path), strict=False)
     clip = clip.to(device)
-    ###
 
-    # with torch.no_grad():
-    #     contexts = clip(tokenizer(prompts, context_length=256).to(device))
-    #     class_contexts = clip(tokenizer(class_prompts, context_length=256).to(device))
-
-
+      
     nnet = utils.get_nnet(**config.nnet)
     nnet = accelerator.prepare(nnet)
-    # nnet_path = '/storage/ScientificPrograms/Diffusion/code/U-ViT-main/workdir/NLMCXR_256/depth=16/ckpts/300000.ckpt/nnet.pth'
     logging.info(f'load nnet from {config.nnet_path}')
     accelerator.unwrap_model(nnet).load_state_dict(torch.load(config.nnet_path, map_location='cpu'))
     nnet.eval()
@@ -128,8 +109,6 @@ def evaluate(config):
     autoencoder.to(device)
 
     @torch.cuda.amp.autocast()
-    # 定义一个函数，用于对输入的_batch进行编码
-    # 定义一个函数，用于对输入的_batch进行编码
     def encode(_batch):
         return autoencoder.encode(_batch)
 
@@ -157,8 +136,6 @@ def evaluate(config):
             continue
         if i != chunks:
             z_init = torch.randn(batch_size, *config.z_shape, device=device)
-            # batch_contexts = contexts[i * 4 : (i + 1) * 4, :, :]
-            # batch_class_contexts = class_contexts[i * 4 : (i + 1) * 4, :, :]
             with torch.no_grad():
                 batch_prompts = prompts[i * 4 : (i + 1) * 4]
                 batch_class_prompts = class_prompts[i * 4 : (i + 1) * 4]
@@ -166,9 +143,6 @@ def evaluate(config):
                 batch_class_contexts = clip(tokenizer(batch_class_prompts, context_length=256).to(device))
         else:
             z_init = torch.randn(final_bs, *config.z_shape, device=device)
-            # batch_contexts = contexts[i * 4: , :, :]
-            # batch_class_contexts = class_contexts[i * 4: , :, :]
-            # batch_prompts = prompts[i * 4 : ]
             with torch.no_grad():
                 batch_prompts = prompts[i * 4 : ]
                 batch_class_prompts = class_prompts[i * 4 : ]
