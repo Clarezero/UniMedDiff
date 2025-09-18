@@ -21,6 +21,9 @@ import numpy as np
 
 
 def stable_diffusion_beta_schedule(linear_start=0.00085, linear_end=0.0120, n_timestep=1000):
+    '''
+    Create a linear beta schedule for diffusion.
+    '''
     _betas = (
         torch.linspace(linear_start ** 0.5, linear_end ** 0.5, n_timestep, dtype=torch.float64) ** 2
     )
@@ -28,6 +31,9 @@ def stable_diffusion_beta_schedule(linear_start=0.00085, linear_end=0.0120, n_ti
 
 
 def get_skip(alphas, betas):
+    '''
+    Precompute skip connection coefficients for alphas and betas.
+    '''
     N = len(betas) - 1
     skip_alphas = np.ones([N + 1, N + 1], dtype=betas.dtype)
     for s in range(N + 1):
@@ -39,18 +45,27 @@ def get_skip(alphas, betas):
     return skip_alphas, skip_betas
 
 
-def stp(s, ts: torch.Tensor):  # scalar tensor product
+def stp(s, ts: torch.Tensor): 
+    '''
+    Scalar-tensor product, keep tensor shape.
+    '''
     if isinstance(s, np.ndarray):
         s = torch.from_numpy(s).type_as(ts)
     extra_dims = (1,) * (ts.dim() - 1)
     return s.view(-1, *extra_dims) * ts
 
 
-def mos(a, start_dim=1):  # mean of square
+def mos(a, start_dim=1): 
+    '''
+    Mean of squared elements.
+    '''
     return a.pow(2).flatten(start_dim=start_dim).mean(dim=-1)
 
 
-class Schedule(object):  # discrete time
+class Schedule(object):
+    '''
+    Diffusion schedule for discrete timesteps.
+    '''
     def __init__(self, _betas):
         r""" _betas[0...999] = betas[1...1000]
              for n>=1, betas[n] is the variance of q(xn|xn-1)
@@ -86,6 +101,9 @@ class Schedule(object):  # discrete time
 
 
 def LSimple(x0, nnet, schedule, **kwargs):
+    '''
+    Basic diffusion training loss: predict noise.
+    '''
     n, eps, xn = schedule.sample(x0)  # n in {1, ..., 1000}
     eps_pred = nnet(xn, n, **kwargs)
     return mos(eps - eps_pred)
@@ -149,6 +167,7 @@ def train(config):
         return autoencoder.decode(_batch)
 
     def get_data_generator():
+        '''Infinite generator for training batches'''
         while True:
             for data in tqdm(train_dataset_loader, disable=not accelerator.is_main_process, desc='epoch'):
                 yield data
@@ -157,9 +176,9 @@ def train(config):
     data_generator = get_data_generator()
 
     def get_context_generator():
+        '''Infinite generator for context batches used in sampling'''
         while True:
             for data in test_dataset_loader:
-                # _, _context = data xiugai
                 _, _context, _hint = data
                 yield _context
 
@@ -170,6 +189,7 @@ def train(config):
     logging.info(f'use {_schedule}')
 
     def cfg_nnet(x, timesteps, context):
+        '''Network output with classifier-free guidance'''
         _cond = nnet_ema(x, timesteps, context=context)
         _empty_context = torch.tensor(dataset.empty_context, device=device)
         _empty_context = einops.repeat(_empty_context, 'L D -> B L D', B=x.size(0))
@@ -177,6 +197,7 @@ def train(config):
         return _cond + config.sample.scale * (_cond - _uncond)
 
     def train_step(_batch):
+        '''Forward + backward pass for one batch'''
         _metrics = dict()
         optimizer.zero_grad()
         _z = autoencoder.sample(_batch[0]) if 'feature' in config.dataset.name else encode(_batch[0])
@@ -190,6 +211,7 @@ def train(config):
         return dict(lr=train_state.optimizer.param_groups[0]['lr'], **_metrics)
 
     def dpm_solver_sample(_n_samples, _sample_steps, **kwargs):
+        '''Generate samples using DPM-Solver with classifier-free guidance'''
         _z_init = torch.randn(_n_samples, *config.z_shape, device=device)
         noise_schedule = NoiseScheduleVP(schedule='discrete', betas=torch.tensor(_betas, device=device).float())
 
@@ -202,6 +224,7 @@ def train(config):
         return decode(_z)
 
     def eval_step(n_samples, sample_steps):
+        '''Evaluate model by generating images and computing FID'''
         logging.info(f'eval_step: n_samples={n_samples}, sample_steps={sample_steps}, algorithm=dpm_solver, '
                      f'mini_batch_size={config.sample.mini_batch_size}')
 
@@ -243,7 +266,6 @@ def train(config):
         metrics = train_step(batch)
 
         nnet.eval()
-        # fid = eval_step(n_samples=10000, sample_steps=50)  # calculate fid of the saved checkpoint
         if accelerator.is_main_process and train_state.step % config.train.log_interval == 0:
             logging.info(utils.dct2str(dict(step=train_state.step, **metrics)))
             logging.info(config.workdir)
@@ -327,10 +349,6 @@ def main(argv):
     config.workdir = FLAGS.workdir or os.path.join('workdir', config.config_name, config.hparams)
     config.ckpt_root = os.path.join(config.workdir, 'ckpts')
     config.sample_dir = os.path.join(config.workdir, 'samples')
-    # config.autoencoder = dict(
-    #     pretrained_path='/storage/ScientificPrograms/Diffusion/code/autoencoder_pretrain/pretrain_v1/Jun30_06-34-55/1-0.0008.pth',
-    #     scale_factor=0.18215
-    # )
     train(config)
 
 
